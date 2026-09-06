@@ -52,7 +52,12 @@ jobs:
 
       - run: npm run app:build
 
+      # `enablement: true` activa Pages con origen "GitHub Actions" la primera
+      # vez, para que el despliegue inicial no falle con un 404 por no haberlo
+      # tocado antes a mano en Settings.
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
