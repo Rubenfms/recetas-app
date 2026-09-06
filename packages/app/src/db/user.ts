@@ -38,6 +38,8 @@ export interface RecipeIngredient {
 
 export interface Favorite {
   productId: string;
+  /** Se guarda además del id porque sobrevive a que Mercadona cambie los suyos. */
+  ean: string | null;
   addedAt: string;
 }
 
@@ -103,4 +105,37 @@ export async function getNutritionOverride(
   productId: string,
 ): Promise<NutritionOverride | undefined> {
   return userDb.nutritionOverrides.get(productId);
+}
+
+// ---------------------------------------------------------------- favoritos
+
+export async function isFavorite(productId: string): Promise<boolean> {
+  return (await userDb.favorites.get(productId)) !== undefined;
+}
+
+/** Devuelve el estado resultante, para que la interfaz no tenga que suponerlo. */
+export async function toggleFavorite(productId: string, ean: string | null): Promise<boolean> {
+  const existing = await userDb.favorites.get(productId);
+  if (existing) {
+    await userDb.favorites.delete(productId);
+    return false;
+  }
+  await userDb.favorites.put({ productId, ean, addedAt: new Date().toISOString() });
+  return true;
+}
+
+/** Más recientes primero: lo último que guardas suele ser lo que buscas. */
+export async function listFavorites(): Promise<Favorite[]> {
+  const all = await userDb.favorites.toArray();
+  return all.sort((a, b) => b.addedAt.localeCompare(a.addedAt));
+}
+
+export async function countUserData(): Promise<Record<string, number>> {
+  const [recipes, favorites, logEntries, nutritionOverrides] = await Promise.all([
+    userDb.recipes.count(),
+    userDb.favorites.count(),
+    userDb.logEntries.count(),
+    userDb.nutritionOverrides.count(),
+  ]);
+  return { recipes, favorites, logEntries, nutritionOverrides };
 }

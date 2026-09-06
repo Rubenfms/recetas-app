@@ -76,16 +76,13 @@ export function renderMarkedText(raw: string): string {
     .replace(/&lt;(\/?)(strong|b|em|i|p|br)\s*\/?&gt;/gi, '<$1$2>');
 }
 
-export function escapeHtml(raw: string): string {
-  return raw
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${num.format(bytes / (1024 * 1024))} MB`;
+}
+
+export function formatDate(iso: string): string {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('es-ES');
 }

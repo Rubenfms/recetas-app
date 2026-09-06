@@ -18,6 +18,12 @@ export default defineConfig({
     target: 'es2022',
     sourcemap: true,
   },
+  // Preact con el runtime automático de JSX. No hace falta plugin: esbuild lo
+  // resuelve solo, y así el bundle no arrastra nada más que la librería.
+  esbuild: {
+    jsx: 'automatic',
+    jsxImportSource: 'preact',
+  },
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
@@ -56,6 +62,23 @@ export default defineConfig({
         navigateFallback: `${BASE}index.html`,
         cleanupOutdatedCaches: true,
         runtimeCaching: [
+          {
+            // La tipografía de los títulos viene de Google Fonts. Sin cachearla
+            // la app funcionaría sin cobertura pero cambiaría de letra, que es
+            // justo el tipo de detalle que delata que algo va mal.
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\//,
+            handler: 'StaleWhileRevalidate',
+            options: { cacheName: 'google-fonts-css' },
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.gstatic\.com\//,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts-files',
+              expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
           {
             // El CDN manda Access-Control-Allow-Origin: * y las URLs llevan el
             // hash del contenido con max-age de un año: se pueden cachear a
