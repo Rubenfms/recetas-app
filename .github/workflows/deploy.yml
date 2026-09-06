@@ -26,9 +26,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # v5 de estas dos es la que corre sobre Node 24; con v4 el runner suelta
+      # el aviso de que Node 20 está deprecado. Es solo ruido, pero ensucia el
+      # log justo donde hay que mirar cuando algo falla.
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: npm
@@ -52,12 +55,11 @@ jobs:
 
       - run: npm run app:build
 
-      # `enablement: true` activa Pages con origen "GitHub Actions" la primera
-      # vez, para que el despliegue inicial no falle con un 404 por no haberlo
-      # tocado antes a mano en Settings.
+      # Sin `enablement: true` a propósito: el GITHUB_TOKEN no puede crear el
+      # sitio de Pages (hace falta permiso de administración del repo), así que
+      # ponerlo convierte un paso manual en un error duro. Hay que activarlo una
+      # vez a mano en Settings → Pages → Source: GitHub Actions.
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
@@ -71,4 +73,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
