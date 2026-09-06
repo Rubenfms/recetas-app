@@ -1,0 +1,21 @@
+{
+  "name": "recetas-app",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "pipeline:fetch": "npm run fetch --workspace @recetas/pipeline --",
+    "pipeline:build": "npm run build --workspace @recetas/pipeline --",
+    "pipeline:update": "npm run update --workspace @recetas/pipeline --",
+    "pipeline:probe-warehouse": "npm run probe-warehouse --workspace @recetas/pipeline --",
+    "app:dev": "npm run dev --workspace @recetas/app",
+    "app:build": "npm run build --workspace @recetas/app",
+    "app:preview": "npm run preview --workspace @recetas/app",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  }
+}

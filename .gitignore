@@ -1,0 +1,36 @@
+node_modules/
+dist/
+dist-ssr/
+*.local
+*.log
+.DS_Store
+.env
+.env.*
+.vite/
+coverage/
+*.tsbuildinfo
+
+# ---------------------------------------------------------------------------
+# REPO PÚBLICO. Nada de lo que sigue puede acabar en un commit.
+# ---------------------------------------------------------------------------
+
+# Volcados crudos de la API de Mercadona y caché de red del pipeline.
+packages/pipeline/data/
+
+# Fotos de producto: en el repo solo van las URLs dentro de dataset.json.
+# Se ignoran por extensión en cualquier ruta; los iconos de la PWA son la
+# única excepción y están explícitamente permitidos.
+*.jpg
+*.jpeg
+*.png
+*.webp
+*.avif
+*.gif
+!packages/app/public/icons/**
+
+# Mis datos personales (recetas, favoritos, registro diario) viven solo en
+# IndexedDB. Si alguna vez los exporto, el fichero no se commitea.
+**/user-data/
+*.userdata.json
+export-*.json
+backup-*.json
