@@ -78,13 +78,14 @@ está previsto.
 
 El listado de categoría trae precio, formato y miniatura, pero **no trae EAN**.
 Como la restricción es referenciar los productos por EAN además de por id, hay
-que pedir las ~4.300 fichas una a una. Eso es lo que convierte el crawl en
-~80 minutos la primera vez.
+que pedir las ~3.000 fichas de alimentación una a una. Eso es lo que convierte
+el crawl en ~55 minutos la primera vez.
 
 ### Formato de envase
 
-Vive entero en `price_instructions`. Distribuciones reales sobre 4.321
-productos:
+Vive entero en `price_instructions`. Distribuciones reales medidas sobre los
+4.321 productos del catálogo completo, antes de acotar el scope a
+alimentación:
 
 | Campo | Valores |
 |---|---|
@@ -232,24 +233,33 @@ genera el pipeline y son reemplazables.
 
 ## El dataset
 
-`packages/app/public/data/dataset.json`. Medido sobre los 4.321 productos
-reales: **7,26 MB en crudo, 0,77 MB por el cable** (GitHub Pages sirve gzip;
-con brotli serían 0,52 MB). Un solo fichero: a este tamaño trocearlo solo añade
-complejidad, y partirlo rompería el objetivo de que todo esté disponible sin
-cobertura.
+`packages/app/public/data/dataset.json`. **Solo alimentación**: 2.985
+productos, **5,24 MB en crudo y 0,59 MB por el cable** (GitHub Pages sirve
+gzip). Un solo fichero: a este tamaño trocearlo solo añade complejidad, y
+partirlo rompería el objetivo de que todo esté disponible sin cobertura.
 
-De esos 7,26 MB, **3,19 MB son las URLs de las fotos**: cada producto guarda
+Antes de acotar el scope eran 4.321 productos y 7,24 MB. Los 1.336 que se
+fueron son cosmética (463), limpieza (341), cabello (177), maquillaje (156),
+mascotas (82), parafarmacia (51) y la parte no comestible de Bebé (47), más
+Velas y decoración (16) y Hielo (3). Ni se descargan: `fetch` salta esas
+subcategorías, y `build` vuelve a filtrar por si el volcado crudo es anterior
+al cambio.
+
+Un dato que condiciona el diseño de las recetas: **el 98,1% de los productos
+de alimentación tienen precio de referencia y contenido en g/ml**, así que el
+coste de una receta y el coste por ración se pueden calcular con exactitud.
+Es el único agregado nutricionalmente útil que se puede dar mientras no haya
+macros.
+
+De los 5,24 MB, **más de 2 MB son las URLs de las fotos**: cada producto guarda
 `thumbnail`, `regular` y `zoom`, que son la misma URL cambiando dos parámetros
 de imgix (`h` y `w`). Se dejan enteras y literales a propósito, porque son lo
 que devuelve la API y porque la regla del repo es que ahí vayan «las URLs de
 las fotos». Guardando solo la clave de imgix y componiendo los tamaños en la
-app el fichero bajaría a ~4,5 MB en crudo (por el cable apenas cambiaría: gzip
-ya deduplica los prefijos repetidos). Lo que se ganaría es tiempo de
-`JSON.parse` y memoria en el móvil, no ancho de banda. Está sin hacer y es una
-decisión pendiente, no un olvido.
-
-Otros repartos del tamaño: `rawSize` 0,85 MB, `ingredients` 0,83 MB,
-`allergens` 0,41 MB, `price` 0,39 MB.
+app el fichero bajaría alrededor de un 40% en crudo (por el cable apenas
+cambiaría: gzip ya deduplica los prefijos repetidos). Lo que se ganaría es
+tiempo de `JSON.parse` y memoria en el móvil, no ancho de banda. Está sin hacer
+y es una decisión pendiente, no un olvido.
 
 Solo se commitea la versión más reciente. Los volcados crudos fechados de los
 que sale se quedan en `packages/pipeline/data/`, que está en `.gitignore`.

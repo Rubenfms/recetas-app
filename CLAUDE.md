@@ -60,7 +60,7 @@ cuadra, comprueba antes de asumir.
   `?lang=en` y dos rutas `/nutrition/` (404). **El 100% de los macros tendrá
   que venir de Open Food Facts, de un genérico o a mano.**
 - El listado de categoría **no trae EAN**: hay que pedir la ficha de cada
-  producto. Son ~4.300 fichas ≈ 80 min a 1 req/s la primera vez.
+  producto. Son ~3.000 fichas ≈ 55 min a 1 req/s la primera vez.
 - El CDN de fotos (`prod-mercadona.imgix.net`) **sí manda
   `Access-Control-Allow-Origin: *`** → la PWA puede descargar las fotos y
   cachearlas. La API (`tienda.mercadona.es`) **no** manda CORS.

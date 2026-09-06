@@ -39,21 +39,16 @@ export async function mountApp(root: HTMLElement): Promise<void> {
                autocomplete="off" autocapitalize="off" spellcheck="false"
                enterkeyhint="search" aria-label="Buscar producto">
       </div>
-      <label class="top__filter">
-        <input type="checkbox" id="only-food" checked>
-        <span>Solo alimentación</span>
-      </label>
     </header>
     <main id="view" class="view"></main>
     <footer class="foot" id="foot"></footer>
   `;
 
   const input = root.querySelector<HTMLInputElement>('#q');
-  const onlyFood = root.querySelector<HTMLInputElement>('#only-food');
   const back = root.querySelector<HTMLButtonElement>('#back');
   const view = root.querySelector<HTMLElement>('#view');
   const foot = root.querySelector<HTMLElement>('#foot');
-  if (!input || !onlyFood || !back || !view || !foot) return;
+  if (!input || !back || !view || !foot) return;
 
   await renderFooter(foot);
 
@@ -68,12 +63,11 @@ export async function mountApp(root: HTMLElement): Promise<void> {
         window.location.hash = '';
         return; // el hashchange encadena con route(), que pinta los resultados
       }
-      void showResults(view, input.value, onlyFood.checked);
+      void showResults(view, input.value);
     }, 120);
   };
 
   input.addEventListener('input', runSearch);
-  onlyFood.addEventListener('change', runSearch);
   back.addEventListener('click', () => {
     window.location.hash = '';
   });
@@ -87,7 +81,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       return;
     }
     back.hidden = true;
-    await showResults(view, input.value, onlyFood.checked);
+    await showResults(view, input.value);
   };
 
   window.addEventListener('hashchange', () => void route());
@@ -97,11 +91,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
 
 // ---------------------------------------------------------------- resultados
 
-async function showResults(
-  view: HTMLElement,
-  query: string,
-  onlyFood: boolean,
-): Promise<void> {
+async function showResults(view: HTMLElement, query: string): Promise<void> {
   if (query.trim().length < 2) {
     view.innerHTML = `
       <p class="empty">Escribe al menos dos letras.<br>
@@ -110,7 +100,7 @@ async function showResults(
     return;
   }
 
-  const results = await searchProducts(query, { onlyFood, limit: RESULT_LIMIT });
+  const results = await searchProducts(query, { limit: RESULT_LIMIT });
   if (results.length === 0) {
     view.innerHTML = `<p class="empty">Nada para «${escapeHtml(query)}».</p>`;
     return;

@@ -4,6 +4,7 @@ import { POSTAL_CODE, RAW_DIR, WAREHOUSE } from '../config.js';
 import { cacheStats } from '../http/cache.js';
 import { httpStats } from '../http/client.js';
 import { Progress, formatDuration, log } from '../lib/log.js';
+import { isFoodCategoryPath } from '../mercadona/food-categories.js';
 import {
   ApiSchemaError,
   apiDrift,
@@ -87,10 +88,20 @@ export async function runFetch(opts: FetchOptions): Promise<string> {
 
   const categories: RawDumpMeta['categories'] = [];
   const subCategories: { id: number; name: string; topId: number }[] = [];
+  const skipped: string[] = [];
 
   for (const top of index.data.results) {
-    categories.push({ id: top.id, name: top.name, level: 0, parentId: null });
+    const topIsFood = isFoodCategoryPath([top.id]);
+    if (topIsFood) categories.push({ id: top.id, name: top.name, level: 0, parentId: null });
+
     for (const sub of top.categories ?? []) {
+      // El scope de la app es alimentación, así que lo demás ni se descarga.
+      // Filtrar en nivel 1 basta: los casos raros (Velas dentro de Panadería,
+      // Hielo dentro de Congelados) son subcategorías de nivel 1.
+      if (!topIsFood || !isFoodCategoryPath([top.id, sub.id])) {
+        skipped.push(sub.name);
+        continue;
+      }
       categories.push({ id: sub.id, name: sub.name, level: 1, parentId: top.id });
       subCategories.push({ id: sub.id, name: sub.name, topId: top.id });
     }
@@ -99,6 +110,7 @@ export async function runFetch(opts: FetchOptions): Promise<string> {
     `${categories.filter((c) => c.level === 0).length} categorías de nivel 0, ` +
       `${subCategories.length} de nivel 1.`,
   );
+  log.info(`${skipped.length} subcategorías fuera del scope, no se descargan: ${skipped.join(', ')}`);
 
   // -------------------------------------------------------------- listados
   log.step('Listados de categoría (de aquí salen los ids de producto)');

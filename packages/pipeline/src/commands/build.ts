@@ -39,8 +39,8 @@ export interface BuildReport {
   withoutEan: number;
   withNetContent: number;
   withPhotos: number;
-  food: number;
-  nonFood: number;
+  /** Fichas del volcado que no son alimentación y quedan fuera del dataset. */
+  skippedNonFood: number;
   invalid: number;
   duplicateEans: number;
   outputPath: string;
@@ -63,10 +63,9 @@ export function runBuild(dumpDir = latestRawDump()): BuildReport {
   }
 
   // ------------------------------------------------------------ categorías
-  const categories: CatalogCategory[] = meta.categories.map((cat) => {
-    const path = pathOfCategory(cat.id, meta.categories);
-    return { ...cat, isFood: isFoodCategoryPath(path) };
-  });
+  const categories: CatalogCategory[] = meta.categories
+    .filter((cat) => isFoodCategoryPath(pathOfCategory(cat.id, meta.categories)))
+    .map(({ id, name, level, parentId }) => ({ id, name, level, parentId }));
 
   // ------------------------------------------------------------ productos
   const productsDir = join(dumpDir, 'products');
@@ -79,6 +78,7 @@ export function runBuild(dumpDir = latestRawDump()): BuildReport {
 
   const products: CatalogProduct[] = [];
   let invalid = 0;
+  let skippedNonFood = 0;
 
   for (const file of files) {
     const id = basename(file, '.json');
@@ -103,7 +103,16 @@ export function runBuild(dumpDir = latestRawDump()): BuildReport {
       continue;
     }
 
-    products.push(normalizeProduct(parsed.data, meta.discovery[id] ?? []));
+    const product = normalizeProduct(parsed.data, meta.discovery[id] ?? []);
+
+    // El crawl ya no baja lo que no es comida, pero un volcado hecho antes de
+    // fijar el scope sí lo tiene. Se vuelve a filtrar aquí para que el dataset
+    // no dependa de cuándo se descargó.
+    if (!isFoodCategoryPath(product.categoryPath)) {
+      skippedNonFood += 1;
+      continue;
+    }
+    products.push(product);
   }
 
   // RESTRICCIÓN DURA: fallar de forma explícita, nunca en silencio. Una ficha
@@ -126,7 +135,6 @@ export function runBuild(dumpDir = latestRawDump()): BuildReport {
   const withoutEan = products.filter((p) => p.ean === null).length;
   const withNetContent = products.filter((p) => p.netContent !== null).length;
   const withPhotos = products.filter((p) => p.photos.length > 0).length;
-  const food = products.filter((p) => p.isFood).length;
 
   const eanSeen = new Map<string, number>();
   for (const p of products) {
@@ -149,8 +157,6 @@ export function runBuild(dumpDir = latestRawDump()): BuildReport {
       withNutrition,
       withoutEan,
       withNetContent,
-      food,
-      nonFood: products.length - food,
       withPhotos,
     },
     categories,
@@ -181,8 +187,7 @@ export function runBuild(dumpDir = latestRawDump()): BuildReport {
     withoutEan,
     withNetContent,
     withPhotos,
-    food,
-    nonFood: products.length - food,
+    skippedNonFood,
     invalid,
     duplicateEans,
     outputPath: DATASET_PATH,

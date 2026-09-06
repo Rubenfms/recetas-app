@@ -46,8 +46,9 @@ function printBuildReport(report: BuildReport): void {
   log.plain(`    sin EAN                 ${report.withoutEan} (${pct(report.withoutEan)})`);
   log.plain(`    con contenido en g/ml   ${report.withNetContent} (${pct(report.withNetContent)})`);
   log.plain(`    con foto                ${report.withPhotos} (${pct(report.withPhotos)})`);
-  log.plain(`    alimentación            ${report.food}`);
-  log.plain(`    no alimentación         ${report.nonFood}`);
+  if (report.skippedNonFood > 0) {
+    log.plain(`  Fuera del scope           ${report.skippedNonFood} (no son alimentación)`);
+  }
   if (report.duplicateEans > 0) {
     log.plain(`  EAN repetidos             ${report.duplicateEans} (productos distintos, mismo código)`);
   }

@@ -1,6 +1,5 @@
 import type { CatalogProduct, Photo } from '@recetas/shared';
 import type { CategoryRef, ProductDetail } from '../mercadona/schemas.js';
-import { isFoodCategoryPath } from '../mercadona/food-categories.js';
 import { toNetContent, toNumber } from './size.js';
 
 /**
@@ -82,7 +81,6 @@ export function normalizeProduct(
     packaging: product.packaging?.trim() || null,
 
     categoryPath,
-    isFood: isFoodCategoryPath(categoryPath),
 
     netContent: toNetContent(pi),
     rawSize: {

@@ -1,5 +1,10 @@
-import { DatasetSchema, type Dataset } from '@recetas/shared';
-import { countProducts, getLoadedDatasetStamp, replaceCatalog } from '../db/catalog.js';
+import { DATASET_SCHEMA_VERSION, DatasetSchema, type Dataset } from '@recetas/shared';
+import {
+  countProducts,
+  getLoadedDatasetStamp,
+  getLoadedSchemaVersion,
+  replaceCatalog,
+} from '../db/catalog.js';
 
 /**
  * Carga del dataset en IndexedDB.
@@ -106,7 +111,13 @@ export async function ensureCatalog(onProgress: ProgressListener): Promise<boole
   onProgress({ phase: 'checking' });
 
   const existing = await countProducts();
-  if (existing > 0) {
+  const storedVersion = await getLoadedSchemaVersion();
+
+  // Un catálogo guardado con otra versión del formato se vuelve a descargar
+  // entero. Comparar solo `generatedAt` no bastaba: si cambia la forma del
+  // dataset y no su fecha, la app se quedaría leyendo registros de un esquema
+  // que ya no existe.
+  if (existing > 0 && storedVersion === DATASET_SCHEMA_VERSION) {
     onProgress({ phase: 'done', products: existing });
     return false;
   }
@@ -125,12 +136,15 @@ export async function checkForUpdate(
   onProgress: ProgressListener,
 ): Promise<'updated' | 'up-to-date' | 'offline'> {
   const loaded = await getLoadedDatasetStamp();
+  const storedVersion = await getLoadedSchemaVersion();
 
   try {
     const dataset = await downloadDataset(() => {
       /* silencioso: esto pasa de fondo y no debe robar la pantalla */
     });
-    if (dataset.generatedAt === loaded) return 'up-to-date';
+    if (dataset.generatedAt === loaded && dataset.schemaVersion === storedVersion) {
+      return 'up-to-date';
+    }
     await install(dataset, onProgress);
     return 'updated';
   } catch (err) {

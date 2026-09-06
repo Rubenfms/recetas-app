@@ -29,8 +29,16 @@ class CatalogDatabase extends Dexie {
   constructor() {
     super('recetas-catalog');
     this.version(1).stores({
-      // `*tokens` es un índice multiEntry: es lo que hace la búsqueda offline.
       products: 'id, *tokens, ean, isFood',
+      categories: 'id, parentId',
+      meta: 'key',
+    });
+    // v2: el catálogo es solo de alimentación, así que el índice `isFood`
+    // dejaba de separar nada. No hace falta migrar datos: el cargador detecta
+    // el cambio de schemaVersion del dataset y lo reemplaza entero.
+    this.version(2).stores({
+      // `*tokens` es un índice multiEntry: es lo que hace la búsqueda offline.
+      products: 'id, *tokens, ean',
       categories: 'id, parentId',
       meta: 'key',
     });
@@ -46,6 +54,12 @@ const META_SOURCE = 'datasetSource';
 export async function getLoadedDatasetStamp(): Promise<string | null> {
   const row = await catalogDb.meta.get(META_GENERATED_AT);
   return typeof row?.value === 'string' ? row.value : null;
+}
+
+/** Con qué versión del formato se guardó lo que hay en IndexedDB. */
+export async function getLoadedSchemaVersion(): Promise<number | null> {
+  const row = await catalogDb.meta.get(META_SCHEMA_VERSION);
+  return typeof row?.value === 'number' ? row.value : null;
 }
 
 export async function getDatasetSource(): Promise<Record<string, unknown> | null> {
@@ -103,7 +117,6 @@ export async function replaceCatalog(
 }
 
 export interface SearchOptions {
-  onlyFood: boolean;
   limit: number;
 }
 
@@ -125,10 +138,9 @@ export async function searchProducts(
     .distinct()
     .toArray();
 
-  const matches = candidates.filter((product) => {
-    if (opts.onlyFood && !product.isFood) return false;
-    return terms.every((term) => product.tokens.some((token) => token.startsWith(term)));
-  });
+  const matches = candidates.filter((product) =>
+    terms.every((term) => product.tokens.some((token) => token.startsWith(term))),
+  );
 
   // Primero lo que empieza por lo que has escrito: buscando "leche" interesa
   // más "Leche semidesnatada" que "Batido de leche".

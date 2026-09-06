@@ -4,11 +4,22 @@
  *
  * Aquí no va lógica de ninguna de las dos mitades. Solo la forma del fichero,
  * escrita una vez, para que no puedan derivar por separado.
+ *
+ * El dataset contiene SOLO alimentación. Limpieza, cosmética, mascotas y
+ * parafarmacia ni se descargan: el scope de la app es la comida, y filtrarlo
+ * en el origen ahorra 25 minutos de rastreo y 2 MB en cada actualización.
  */
 import { z } from 'zod';
 
-/** Versión del formato. Súbela si cambia de forma incompatible. */
-export const DATASET_SCHEMA_VERSION = 1;
+/**
+ * Versión del formato. Súbela si cambia de forma incompatible: la app compara
+ * esto con lo que tiene guardado y vuelve a descargar si no coincide.
+ *
+ * 2 — el dataset es solo de alimentación. Desaparece `isFood`, que en un
+ *     catálogo donde todo es comida no distinguía nada.
+ * 1 — catálogo completo con limpieza, cosmética y mascotas.
+ */
+export const DATASET_SCHEMA_VERSION = 2;
 
 // ---------------------------------------------------------------------------
 // Nutrición
@@ -117,8 +128,6 @@ export const CatalogProductSchema = z.object({
 
   /** Ruta de categorías, de nivel 0 hacia dentro. Ids de `categories`. */
   categoryPath: z.array(z.number()),
-  /** Falso para limpieza, cosmética, mascotas, parafarmacia y similares. */
-  isFood: z.boolean(),
 
   /** Normalizado a g/ml. `null` cuando se vende por unidades o por metros. */
   netContent: NetContentSchema.nullable(),
@@ -147,7 +156,6 @@ export const CatalogCategorySchema = z.object({
   name: z.string(),
   level: z.number(),
   parentId: z.number().nullable(),
-  isFood: z.boolean(),
 });
 export type CatalogCategory = z.infer<typeof CatalogCategorySchema>;
 
@@ -171,8 +179,6 @@ export const DatasetCountsSchema = z.object({
   withNutrition: z.number(),
   withoutEan: z.number(),
   withNetContent: z.number(),
-  food: z.number(),
-  nonFood: z.number(),
   withPhotos: z.number(),
 });
 export type DatasetCounts = z.infer<typeof DatasetCountsSchema>;

@@ -82,14 +82,6 @@ html, body {
   font-size: 1rem;
 }
 .search:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-.top__filter {
-  display: inline-flex;
-  gap: 0.4rem;
-  align-items: center;
-  margin-top: 0.5rem;
-  color: var(--muted);
-  font-size: 0.85rem;
-}
 
 /* ------------------------------------------------------------- listado */
 
