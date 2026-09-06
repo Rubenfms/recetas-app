@@ -1,0 +1,205 @@
+:root {
+  --bg: #12211c;
+  --surface: #1b2f28;
+  --surface-2: #244036;
+  --line: #2f5146;
+  --text: #eaf3ef;
+  --muted: #9db5aa;
+  --accent: #6ee7a8;
+  --warn: #f0a868;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  overscroll-behavior-y: none;
+}
+
+/* ------------------------------------------------------------- arranque */
+
+.boot {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+  max-width: 30rem;
+  margin: 0 auto;
+}
+.boot__title { margin: 0; font-size: 2rem; letter-spacing: -0.02em; }
+.boot__subtitle { margin: 0.25rem 0 2rem; color: var(--muted); }
+.boot__bar {
+  height: 6px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.boot__fill {
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  transition: width 0.25s ease-out;
+}
+.boot__fill--error { background: var(--warn); }
+.boot__status { margin: 0.75rem 0 0; font-variant-numeric: tabular-nums; }
+.boot__note { color: var(--muted); font-size: 0.85rem; }
+
+/* ------------------------------------------------------------- cabecera */
+
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  padding: max(0.75rem, env(safe-area-inset-top)) 0.75rem 0.5rem;
+}
+.top__row { display: flex; gap: 0.5rem; align-items: center; }
+.top__back {
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+.search {
+  flex: 1;
+  min-width: 0;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1rem;
+}
+.search:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.top__filter {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  margin-top: 0.5rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* ------------------------------------------------------------- listado */
+
+.view { padding: 0.5rem 0.75rem 3rem; max-width: 40rem; margin: 0 auto; }
+
+.empty { color: var(--muted); text-align: center; padding: 3rem 1rem; }
+.empty__hint { font-size: 0.85rem; }
+.list__more { display: block; text-align: center; }
+
+.list { list-style: none; margin: 0; padding: 0; }
+.row + .row { border-top: 1px solid var(--line); }
+.row__link {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.6rem 0.25rem;
+  color: inherit;
+  text-decoration: none;
+}
+.row__img {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  background: var(--surface);
+  border-radius: 0.5rem;
+}
+.row__img--none { background: var(--surface-2); }
+.row__body { flex: 1; min-width: 0; }
+.row__name { display: block; }
+.row__meta {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.row__price { flex: none; text-align: right; }
+.row__price-main { display: block; font-variant-numeric: tabular-nums; }
+.row__price-ref { display: block; color: var(--muted); font-size: 0.75rem; }
+
+/* ------------------------------------------------------------- ficha */
+
+.detail { padding-bottom: 2rem; }
+.detail__img {
+  display: block;
+  width: 100%;
+  max-width: 18rem;
+  margin: 0.5rem auto 1rem;
+  border-radius: 0.75rem;
+  background: var(--surface);
+}
+.detail__name { margin: 0; font-size: 1.35rem; line-height: 1.25; }
+.detail__brand { margin: 0.2rem 0 0; color: var(--muted); }
+.detail__price {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin: 0.75rem 0 1rem;
+}
+.detail__price-main { font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.detail__price-ref { color: var(--muted); }
+
+.facts { margin: 0 0 1.25rem; display: grid; gap: 0.35rem; }
+.facts__item { display: flex; gap: 0.75rem; justify-content: space-between; }
+.facts dt { color: var(--muted); flex: none; }
+.facts dd { margin: 0; text-align: right; }
+
+.block {
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
+  margin-top: 1rem;
+}
+.block__title { margin: 0 0 0.5rem; font-size: 1rem; }
+.block__title small { color: var(--muted); font-weight: normal; }
+.block__text { margin: 0; color: var(--muted); font-size: 0.9rem; }
+.block__text strong { color: var(--text); }
+
+.nutrition { width: 100%; border-collapse: collapse; }
+.nutrition th {
+  text-align: left;
+  font-weight: normal;
+  color: var(--muted);
+  padding: 0.2rem 0;
+}
+.nutrition td { text-align: right; font-variant-numeric: tabular-nums; }
+.nutrition__none { margin: 0 0 0.35rem; }
+.nutrition__why { margin: 0 0 0.6rem; color: var(--muted); font-size: 0.85rem; }
+
+/* El campo `fuente` se enseña siempre. Es una restricción, no un adorno. */
+.fuente {
+  margin: 0.6rem 0 0;
+  padding: 0.4rem 0.6rem;
+  background: var(--surface);
+  border-left: 3px solid var(--accent);
+  border-radius: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.fuente strong { color: var(--accent); }
+.fuente--none { border-left-color: var(--warn); }
+
+/* ------------------------------------------------------------- pie */
+
+.foot {
+  border-top: 1px solid var(--line);
+  padding: 1rem 0.75rem calc(1rem + env(safe-area-inset-bottom));
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-align: center;
+}
+.foot p { margin: 0.15rem 0; }

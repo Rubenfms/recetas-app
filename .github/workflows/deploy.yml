@@ -1,0 +1,69 @@
+name: Publicar PWA en GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    # El pipeline corre en local; lo único que dispara un despliegue es que
+    # cambie la app o el dataset que la alimenta.
+    paths:
+      - 'packages/app/**'
+      - 'packages/shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      # Sin dataset la app arranca y se queda en la pantalla de carga con un
+      # 404. Mejor romper aquí que desplegar algo que no funciona.
+      - name: Comprobar que el dataset está en el repo
+        run: |
+          if [ ! -f packages/app/public/data/dataset.json ]; then
+            echo "Falta packages/app/public/data/dataset.json."
+            echo "Genéralo en local con 'npm run pipeline:update' y commitéalo."
+            exit 1
+          fi
+          node -e "const d=require('./packages/app/public/data/dataset.json');
+            if(!d.products?.length) throw new Error('El dataset no tiene productos');
+            console.log('Dataset OK:', d.products.length, 'productos, generado', d.generatedAt);"
+
+      - run: npm run typecheck
+
+      - run: npm run app:build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: packages/app/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
