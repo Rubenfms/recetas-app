@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { getProduct, searchProducts, type StoredProduct } from '../db/catalog.js';
 import { listFavorites } from '../db/user.js';
 import { formatPrice } from '../lib/format.js';
 import { hrefFor, navigate } from '../lib/router.js';
+import { FavoriteButton } from './FavoriteButton.js';
 import { IconClock, IconClose, IconSearch } from './icons.js';
 import { ProductRow } from './ProductRow.js';
 
@@ -36,17 +37,21 @@ export function SearchView({ catalogSize }: { catalogSize: number }) {
   const [results, setResults] = useState<StoredProduct[] | null>(null);
   const [recents, setRecents] = useState<string[]>(readRecents);
   const [favorites, setFavorites] = useState<StoredProduct[]>([]);
+  const [favIds, setFavIds] = useState<ReadonlySet<string>>(() => new Set());
   const inputRef = useRef<HTMLInputElement>(null);
   const commitTimer = useRef<number | undefined>(undefined);
   const latestQuery = useRef('');
 
-  useEffect(() => {
-    void (async () => {
-      const rows = await listFavorites();
-      const loaded = await Promise.all(rows.slice(0, 10).map((f) => getProduct(f.productId)));
-      setFavorites(loaded.filter((p): p is StoredProduct => Boolean(p)));
-    })();
+  const loadFavorites = useCallback(async () => {
+    const rows = await listFavorites();
+    setFavIds(new Set(rows.map((r) => r.productId)));
+    const loaded = await Promise.all(rows.slice(0, 10).map((f) => getProduct(f.productId)));
+    setFavorites(loaded.filter((p): p is StoredProduct => Boolean(p)));
   }, []);
+
+  useEffect(() => {
+    void loadFavorites();
+  }, [loadFavorites]);
 
   useEffect(() => {
     let cancelled = false;
@@ -204,7 +209,27 @@ export function SearchView({ catalogSize }: { catalogSize: number }) {
         <>
           <ul class="rows">
             {results.map((product) => (
-              <ProductRow key={product.id} product={product} />
+              <ProductRow
+                key={product.id}
+                product={product}
+                trailing={
+                  <FavoriteButton
+                    product={product}
+                    saved={favIds.has(product.id)}
+                    onToggled={(saved) => {
+                      // Se pinta al momento y después se recarga la lista, que
+                      // es lo que alimenta la tira de la portada.
+                      setFavIds((prev) => {
+                        const next = new Set(prev);
+                        if (saved) next.add(product.id);
+                        else next.delete(product.id);
+                        return next;
+                      });
+                      void loadFavorites();
+                    }}
+                  />
+                }
+              />
             ))}
           </ul>
           {results.length === RESULT_LIMIT && (

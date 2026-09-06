@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'preact/hooks';
 import { getProduct, type StoredProduct } from '../db/catalog.js';
-import { listFavorites, toggleFavorite } from '../db/user.js';
+import { listFavorites } from '../db/user.js';
 import { formatPrice } from '../lib/format.js';
-import { IconHeart } from './icons.js';
+import { FavoriteButton } from './FavoriteButton.js';
 import { ProductRow } from './ProductRow.js';
 
 export function FavoritesView() {
@@ -56,17 +56,7 @@ export function FavoritesView() {
               key={product.id}
               product={product}
               trailing={
-                <button
-                  class="iconbtn iconbtn--on"
-                  type="button"
-                  aria-label={`Quitar ${product.name} de favoritos`}
-                  style={{ marginRight: '6px' }}
-                  onClick={() => {
-                    void toggleFavorite(product.id, product.ean).then(load);
-                  }}
-                >
-                  <IconHeart filled size={21} />
-                </button>
+                <FavoriteButton product={product} saved onToggled={() => void load()} />
               }
             />
           ))}
