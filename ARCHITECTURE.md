@@ -339,9 +339,67 @@ faltan en la práctica.
 
 ---
 
+## Recetas
+
+Una receta son productos del catálogo con cantidades, una foto propia y
+raciones. Vive en `recetas-user` (`packages/app/src/db/user.ts`); el catálogo
+no sabe nada de ella. Cada ingrediente guarda `productId`, `ean` y el nombre
+en el momento de añadirlo, para que un producto que Mercadona retire siga
+apareciendo en la receta, marcado, en vez de desaparecer.
+
+### Coste y macros: `lib/recipe-math.ts`
+
+Funciones puras. Entran ingredientes y productos, salen números y, sobre
+todo, **qué falta**: una receta con un ingrediente sin precio no cuesta
+"3,20 €", cuesta "3,20 € más uno que no sé", y eso se lleva hasta la pantalla
+("aprox.", "parcial", "N ingredientes sin macros").
+
+- **Coste**: precio de referencia × cantidad, convirtiendo por formato
+  (`kg`, `L`, `100 g`, `100 ml`, `ud`, `dz`). Sin referencia utilizable, precio
+  del envase entre su contenido neto. Para unidades sin referencia por unidad,
+  precio del envase entre sus unidades. 1 ml se trata como 1 g cuando cantidad
+  y referencia no coinciden.
+- **Macros**: los del catálogo, por 100 g/ml, escalados a la cantidad. Para
+  unidades hace falta pasar a gramos: contenido neto del envase entre sus
+  unidades (un pack de 8 yogures de 1 kg son 125 g cada uno; una patata
+  "pieza" de ~240 g, 240 g). Sin contenido neto —huevos— no se puede, y se
+  dice.
+- **Raciones**: en la ficha, un control cambia las raciones y reescala
+  cantidades, coste y macros sin tocar la receta guardada.
+
+### Foto
+
+`lib/photo.ts`: de lo que devuelve el selector a un Blob de ≤1200 px en WebP
+(JPEG si el navegador no codifica WebP; Safari devuelve un PNG enorme si se
+le pide un tipo que no conoce, así que se comprueba el tipo del resultado).
+Aplica la orientación EXIF. Una foto del iPhone pasa de 3-4 MB a ~100-200 KB.
+
+Son **dos** `<input type="file">`: uno con `capture="environment"` (cámara) y
+otro sin él (galería). En iOS `capture` fuerza la cámara y esconde la
+fototeca; con uno solo no habría forma de subir una foto ya hecha.
+
+### Fotos de producto sin cobertura
+
+Al guardar una receta, `lib/precache.ts` pide las fotos de sus productos para
+que el service worker las guarde. Sin eso, "funciona sin cobertura" solo se
+cumpliría para las fichas que ya se hubieran abierto; con eso, la receta se
+ve entera en el supermercado aunque nunca hayas mirado esos productos.
+Verificado: recargando sin red, las cuatro fotos de la tortilla cargan.
+
+### Lo que enseña la realidad
+
+En una tortilla de patatas, solo el aceite trae macros. Patata, huevos,
+cebolla y sal no: son fresco con código interno de tienda, o huevos sin
+contenido neto. **El tercio del catálogo sin macros está concentrado en el
+fresco, que es justo la base de la mayoría de las recetas.** Por eso el
+siguiente paso natural es `fuente: generico` para fruta, verdura, huevos,
+carne y pescado, cuyos valores son de tabla y cambian poco entre marcas.
+
+---
+
 ## Lo que no está hecho
 
-Recetas, lista de la compra, registro diario, estimación desde alimento
-genérico y corrección manual de macros. El modelo de datos está preparado
-(`Nutrition` con su `fuente`, la base `recetas-user`), pero la funcionalidad es
-de fases posteriores.
+Lista de la compra, registro diario, estimación desde alimento genérico y
+corrección manual de macros. El modelo de datos está preparado (`Nutrition`
+con su `fuente`, las tablas de `recetas-user`), pero la funcionalidad es de
+fases posteriores.

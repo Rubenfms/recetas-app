@@ -107,3 +107,23 @@ export function IconUpload({ size = 18 }: IconProps) {
     </svg>
   );
 }
+
+export function IconCamera({ size = 20 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size} stroke-width="1.6">
+      <path d="M3 8.5A1.5 1.5 0 0 1 4.5 7h2.2l1.1-2h8.4l1.1 2h2.2A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z" />
+      <circle cx="12" cy="13" r="3.6" />
+    </svg>
+  );
+}
+
+export function IconImage({ size = 20 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size} stroke-width="1.6">
+      <rect x="3" y="4.5" width="18" height="15" rx="2.5" />
+      <circle cx="8.5" cy="10" r="1.6" />
+      <path d="M3.5 17.4l4.8-4.3a2 2 0 0 1 2.7 0l3 2.7" />
+      <path d="M14.2 14.6l1.6-1.4a2 2 0 0 1 2.7 0l2 1.8" />
+    </svg>
+  );
+}

@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { FuenteNutricional, NetContent } from '@recetas/shared';
+import type { FuenteNutricional } from '@recetas/shared';
 
 /**
  * Base de datos de MIS DATOS.
@@ -8,20 +8,32 @@ import type { FuenteNutricional, NetContent } from '@recetas/shared';
  * catálogo no abre esta base ni para leer — por eso son dos bases distintas y
  * no dos tablas de la misma. Si algún día alguien escribe aquí desde el
  * cargador del dataset, será un cambio deliberado y visible en el diff.
- *
- * Las tablas están definidas pero todavía no se usan: recetas, favoritos y
- * registro diario son de sesiones posteriores. El esquema está aquí para que
- * el modelo de datos esté preparado, como se pidió.
  */
+
+/**
+ * Cantidad de un ingrediente. Además de g/ml admite unidades, porque hay
+ * productos que se venden así (huevos, piezas) y una receta dice "6 huevos",
+ * no "360 g de huevo".
+ */
+export type QuantityUnit = 'g' | 'ml' | 'ud';
+export interface Quantity {
+  amount: number;
+  unit: QuantityUnit;
+}
 
 export interface Recipe {
   id: string;
   name: string;
-  /** Porciones que salen de la receta, para repartir los macros. */
+  /** Porciones que salen de la receta, para repartir coste y macros. */
   servings: number;
   ingredients: RecipeIngredient[];
   steps: string[];
   notes: string | null;
+  /**
+   * Foto propia, ya redimensionada. Vive solo aquí: no sale del móvil y no
+   * toca el repo. La copia de seguridad la codifica en base64.
+   */
+  photo: Blob | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -31,9 +43,9 @@ export interface RecipeIngredient {
   productId: string | null;
   /** EAN, que sobrevive a que Mercadona cambie sus ids internos. */
   ean: string | null;
-  /** Texto libre para lo que no está en el catálogo ("sal", "agua"). */
+  /** Nombre en el momento de añadirlo, por si el producto desaparece. */
   label: string;
-  quantity: NetContent | null;
+  quantity: Quantity | null;
 }
 
 export interface Favorite {
@@ -50,7 +62,7 @@ export interface LogEntry {
   productId: string | null;
   recipeId: string | null;
   label: string;
-  quantity: NetContent | null;
+  quantity: Quantity | null;
   createdAt: string;
 }
 
@@ -138,4 +150,30 @@ export async function countUserData(): Promise<Record<string, number>> {
     userDb.nutritionOverrides.count(),
   ]);
   return { recipes, favorites, logEntries, nutritionOverrides };
+}
+
+// ---------------------------------------------------------------- recetas
+
+export function newId(): string {
+  return typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/** Las últimas tocadas primero. */
+export async function listRecipes(): Promise<Recipe[]> {
+  const all = await userDb.recipes.toArray();
+  return all.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+export async function getRecipe(id: string): Promise<Recipe | undefined> {
+  return userDb.recipes.get(id);
+}
+
+export async function saveRecipe(recipe: Recipe): Promise<void> {
+  await userDb.recipes.put({ ...recipe, updatedAt: new Date().toISOString() });
+}
+
+export async function deleteRecipe(id: string): Promise<void> {
+  await userDb.recipes.delete(id);
 }

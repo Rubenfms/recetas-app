@@ -11,6 +11,7 @@ import {
 } from '../lib/format.js';
 import { goBack } from '../lib/router.js';
 import { IconBack, IconChevron, IconHeart, IconPlus } from './icons.js';
+import { RecipePicker } from './RecipePicker.js';
 
 function Fact({ label, value }: { label: string; value: string }) {
   return (
@@ -126,6 +127,7 @@ export function ProductView({ id }: { id: string }) {
   const [fav, setFav] = useState(false);
   const [manual, setManual] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
+  const [picking, setPicking] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -260,11 +262,13 @@ export function ProductView({ id }: { id: string }) {
             <IconHeart size={18} filled={fav} />
             {fav ? 'Guardado' : 'Guardar'}
           </button>
-          <button class="btn" type="button" disabled title="Llega con las recetas">
+          <button class="btn" type="button" onClick={() => setPicking(true)}>
             <IconPlus />
             A una receta
           </button>
         </div>
+
+        {picking && <RecipePicker productId={product.id} onClose={() => setPicking(false)} />}
 
         <div style={{ marginTop: '22px', borderTop: '1px solid var(--line)' }}>
           {product.ingredients && <Disclosure title="Ingredientes" html={product.ingredients} />}

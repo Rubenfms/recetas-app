@@ -92,12 +92,25 @@ cuadra, comprueba antes de asumir.
 - Lo que OFF no cubre se queda **vacío, con `fuente` en blanco**. Los
   genéricos y la entrada manual son decisiones pendientes, no olvidos.
 
+## Recetas (hecho)
+
+Viven en `recetas-user`. Coste y macros se calculan en
+`packages/app/src/lib/recipe-math.ts`, funciones puras que devuelven también
+**qué falta** (sin precio, sin macros, sin cantidad); la interfaz lo enseña
+siempre en vez de dar un total redondo. Detalles que no son obvios y están en
+`ARCHITECTURE.md` § "Recetas": conversión de unidades (`kg`, `L`, `100 g`,
+`ud`, `dz`), gramos por unidad desde el contenido neto, dos inputs de foto
+porque en iOS `capture` esconde la galería, y precacheo de fotos al guardar.
+
+**El fresco casi nunca tiene macros** (código interno de tienda, OFF no lo
+conoce): patata, huevos, cebolla. Es la base de las recetas. `generico` para
+fruta, verdura, huevos, carne y pescado es el siguiente paso natural.
+
 ## Trabajo futuro (no lo hagas sin que te lo pidan)
 
-Recetas, lista de la compra y registro diario son fases posteriores.
-Estimación desde alimento genérico y corrección manual de macros también. El
-modelo de datos ya está preparado (`packages/shared/src/dataset.ts` y las
-tablas de usuario en la PWA), pero la funcionalidad no está escrita.
+Lista de la compra, registro diario, estimación desde alimento genérico y
+corrección manual de macros. El modelo de datos ya está preparado, pero la
+funcionalidad no está escrita.
 
 ## Comandos
 

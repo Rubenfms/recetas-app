@@ -19,7 +19,6 @@ export function ProductRow({
     product.nutrition?.kcal != null
       ? `${Math.round(product.nutrition.kcal)} kcal/${product.nutrition.per === '100ml' ? '100 ml' : '100 g'}`
       : null;
-  const meta = [describePackaging(product) || '—', kcal].filter(Boolean).join(' · ');
 
   return (
     <li class="row">
@@ -31,7 +30,8 @@ export function ProductRow({
         )}
         <span class="row__body">
           <span class="row__name">{product.name}</span>
-          <span class="row__meta">{meta}</span>
+          <span class="row__meta">{describePackaging(product) || '—'}</span>
+          {kcal && <span class="row__meta row__meta--kcal num">{kcal}</span>}
           {badge && <span class="badge">{badge}</span>}
         </span>
         <span class="row__price num">

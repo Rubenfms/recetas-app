@@ -37,8 +37,17 @@ class CatalogDatabase extends Dexie {
     // dejaba de separar nada. No hace falta migrar datos: el cargador detecta
     // el cambio de schemaVersion del dataset y lo reemplaza entero.
     this.version(2).stores({
-      // `*tokens` es un índice multiEntry: es lo que hace la búsqueda offline.
       products: 'id, *tokens, ean',
+      categories: 'id, parentId',
+      meta: 'key',
+    });
+    // v3: navegar por categorías. `*categoryPath` indexa cada nivel de la
+    // ruta, así que pedir la categoría 12 devuelve todo lo que cuelga de ella.
+    // Dexie reconstruye el índice con los datos que ya hay: no obliga a
+    // volver a descargar el catálogo.
+    this.version(3).stores({
+      // `*tokens` es un índice multiEntry: es lo que hace la búsqueda offline.
+      products: 'id, *tokens, ean, *categoryPath',
       categories: 'id, parentId',
       meta: 'key',
     });
@@ -160,4 +169,28 @@ export async function getProduct(id: string): Promise<StoredProduct | undefined>
 
 export async function getCategories(): Promise<CatalogCategory[]> {
   return catalogDb.categories.toArray();
+}
+
+export async function getCategory(id: number): Promise<CatalogCategory | undefined> {
+  return catalogDb.categories.get(id);
+}
+
+/** Hijas directas, por nombre. */
+export async function getChildCategories(parentId: number | null): Promise<CatalogCategory[]> {
+  const rows =
+    parentId === null
+      ? await catalogDb.categories.filter((c) => c.parentId === null).toArray()
+      : await catalogDb.categories.where('parentId').equals(parentId).toArray();
+  return rows.sort((a, b) => a.name.localeCompare(b.name, 'es'));
+}
+
+/** Todo lo que cuelga de una categoría, a cualquier profundidad. */
+export async function getProductsInCategory(categoryId: number): Promise<StoredProduct[]> {
+  const rows = await catalogDb.products.where('categoryPath').equals(categoryId).toArray();
+  return rows.sort((a, b) => a.name.localeCompare(b.name, 'es'));
+}
+
+/** Varios productos de golpe, en el mismo orden que los ids; `undefined` donde falte. */
+export async function getProducts(ids: string[]): Promise<(StoredProduct | undefined)[]> {
+  return catalogDb.products.bulkGet(ids);
 }

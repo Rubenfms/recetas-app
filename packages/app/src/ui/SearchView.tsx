@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
-import { getProduct, searchProducts, type StoredProduct } from '../db/catalog.js';
+import type { CatalogCategory } from '@recetas/shared';
+import {
+  getChildCategories,
+  getProduct,
+  searchProducts,
+  type StoredProduct,
+} from '../db/catalog.js';
 import { listFavorites } from '../db/user.js';
 import { formatPrice } from '../lib/format.js';
 import { hrefFor, navigate } from '../lib/router.js';
-import { FavoriteButton } from './FavoriteButton.js';
-import { IconClock, IconClose, IconSearch } from './icons.js';
-import { ProductRow } from './ProductRow.js';
+import { IconChevron, IconClock, IconClose, IconSearch } from './icons.js';
+import { ProductList } from './ProductList.js';
 
 const RESULT_LIMIT = 60;
 const RECENTS_KEY = 'recetas:recientes';
@@ -37,20 +42,20 @@ export function SearchView({ catalogSize }: { catalogSize: number }) {
   const [results, setResults] = useState<StoredProduct[] | null>(null);
   const [recents, setRecents] = useState<string[]>(readRecents);
   const [favorites, setFavorites] = useState<StoredProduct[]>([]);
-  const [favIds, setFavIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [categories, setCategories] = useState<CatalogCategory[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const commitTimer = useRef<number | undefined>(undefined);
   const latestQuery = useRef('');
 
   const loadFavorites = useCallback(async () => {
     const rows = await listFavorites();
-    setFavIds(new Set(rows.map((r) => r.productId)));
     const loaded = await Promise.all(rows.slice(0, 10).map((f) => getProduct(f.productId)));
     setFavorites(loaded.filter((p): p is StoredProduct => Boolean(p)));
   }, []);
 
   useEffect(() => {
     void loadFavorites();
+    void getChildCategories(null).then(setCategories);
   }, [loadFavorites]);
 
   useEffect(() => {
@@ -148,15 +153,7 @@ export function SearchView({ catalogSize }: { catalogSize: number }) {
 
           {favorites.length > 0 && (
             <section style={{ padding: '28px 0 0' }}>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'baseline',
-                  justifyContent: 'space-between',
-                  padding: '0 16px',
-                  marginBottom: '12px',
-                }}
-              >
+              <div class="section-head">
                 <h2 class="eyebrow" style={{ margin: 0 }}>
                   Tus favoritos
                 </h2>
@@ -186,14 +183,26 @@ export function SearchView({ catalogSize }: { catalogSize: number }) {
             </section>
           )}
 
-          {recents.length === 0 && favorites.length === 0 && (
-            <p class="empty">
-              Escribe al menos dos letras.
-              <br />
-              <span class="empty__hint">
-                Funciona sin cobertura: el catálogo está en el móvil.
-              </span>
-            </p>
+          {categories.length > 0 && (
+            <section style={{ padding: '28px 0 0' }}>
+              <h2 class="eyebrow" style={{ margin: '0 16px 6px' }}>
+                Categorías
+              </h2>
+              <ul class="rows rows--compact">
+                {categories.map((c) => (
+                  <li key={c.id} class="row">
+                    <a class="row__link" href={hrefFor({ name: 'categoria', id: c.id })}>
+                      <span class="row__body">
+                        <span class="row__name">{c.name}</span>
+                      </span>
+                      <span style={{ color: 'var(--muted)', display: 'flex' }}>
+                        <IconChevron />
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
 
           <button class="footinfo" type="button" onClick={() => navigate({ name: 'ajustes' })}>
@@ -203,35 +212,13 @@ export function SearchView({ catalogSize }: { catalogSize: number }) {
             </span>
           </button>
         </>
-      ) : results.length === 0 ? (
-        <p class="empty">Nada para «{query}».</p>
       ) : (
         <>
-          <ul class="rows">
-            {results.map((product) => (
-              <ProductRow
-                key={product.id}
-                product={product}
-                trailing={
-                  <FavoriteButton
-                    product={product}
-                    saved={favIds.has(product.id)}
-                    onToggled={(saved) => {
-                      // Se pinta al momento y después se recarga la lista, que
-                      // es lo que alimenta la tira de la portada.
-                      setFavIds((prev) => {
-                        const next = new Set(prev);
-                        if (saved) next.add(product.id);
-                        else next.delete(product.id);
-                        return next;
-                      });
-                      void loadFavorites();
-                    }}
-                  />
-                }
-              />
-            ))}
-          </ul>
+          <ProductList
+            products={results}
+            onFavoritesChanged={() => void loadFavorites()}
+            emptyText={`Nada para «${query}».`}
+          />
           {results.length === RESULT_LIMIT && (
             <p class="empty empty__hint">Hay más. Afina la búsqueda.</p>
           )}
