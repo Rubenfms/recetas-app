@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "fetch": "tsx src/cli.ts fetch",
+    "enrich": "tsx src/cli.ts enrich",
     "build": "tsx src/cli.ts build",
     "update": "tsx src/cli.ts update",
     "probe-warehouse": "tsx src/cli.ts probe-warehouse",

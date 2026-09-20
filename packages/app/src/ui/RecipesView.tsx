@@ -17,8 +17,8 @@ export function RecipesView() {
         </span>
         <p style={{ margin: '14px 0 0' }}>Todavía no.</p>
         <p class="empty__hint" style={{ margin: '6px 0 0' }}>
-          Primero los macros de Open Food Facts, para que una receta pueda decirte
-          las kcal por ración además del coste.
+          Es lo siguiente. Los macros ya están en el catálogo, así que una receta
+          podrá decirte kcal y coste por ración.
         </p>
       </div>
     </div>

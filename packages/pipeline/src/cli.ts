@@ -2,6 +2,7 @@ import { relative } from 'node:path';
 import { REPO_ROOT } from './config.js';
 import { formatDuration, log } from './lib/log.js';
 import { runFetch, type FetchOptions } from './commands/fetch.js';
+import { runEnrich } from './commands/enrich.js';
 import { runBuild, type BuildReport } from './commands/build.js';
 import { runProbeWarehouse } from './commands/probe-warehouse.js';
 
@@ -43,6 +44,11 @@ function printBuildReport(report: BuildReport): void {
   log.plain(`  Volcado crudo             ${report.dumpDate}`);
   log.plain(`  Productos                 ${report.products}`);
   log.plain(`    con datos nutricionales ${report.withNutrition} (${pct(report.withNutrition)})`);
+  if (report.offMatched > 0) {
+    log.plain(`      su EAN está en OFF    ${report.offMatched} (${pct(report.offMatched)})`);
+    log.plain(`      en OFF pero sin macros ${report.offWithoutNutrients}`);
+    log.plain(`      descartados por imposibles ${report.offImpossible}`);
+  }
   log.plain(`    sin EAN                 ${report.withoutEan} (${pct(report.withoutEan)})`);
   log.plain(`    con contenido en g/ml   ${report.withNetContent} (${pct(report.withNetContent)})`);
   log.plain(`    con foto                ${report.withPhotos} (${pct(report.withPhotos)})`);
@@ -61,9 +67,17 @@ function printBuildReport(report: BuildReport): void {
   if (report.withNutrition === 0) {
     log.plain();
     log.plain(
-      '  Cero productos con macros es lo esperado: la API de Mercadona no\n' +
-        '  publica valores nutricionales. Se rellenarán con el cruce contra\n' +
-        '  Open Food Facts (fuente: openfoodfacts) en una sesión posterior.',
+      '  Cero productos con macros. La API de Mercadona no publica valores\n' +
+        '  nutricionales: los trae el cruce con Open Food Facts. Ejecuta\n' +
+        '  `npm run pipeline:enrich` y vuelve a construir.',
+    );
+  } else if (report.offMatched > 0) {
+    const sin = report.products - report.withNutrition;
+    log.plain();
+    log.plain(
+      `  ${sin} productos siguen sin macros: unos porque Open Food Facts no los\n` +
+        '  conoce y otros porque su ficha allí no los tiene. Todos muestran su\n' +
+        '  campo fuente vacío, sin inventar nada.',
     );
   }
 }
@@ -81,8 +95,13 @@ async function main(): Promise<void> {
       printBuildReport(runBuild());
       break;
     }
+    case 'enrich': {
+      await runEnrich(opts);
+      break;
+    }
     case 'update': {
       const dir = await runFetch(opts);
+      await runEnrich(opts);
       printBuildReport(runBuild(dir));
       break;
     }
@@ -95,17 +114,20 @@ async function main(): Promise<void> {
 Pipeline del catálogo de Mercadona.
 
   tsx src/cli.ts fetch [opciones]     Descarga el catálogo al volcado crudo.
+  tsx src/cli.ts enrich [opciones]    Cruza los EAN con Open Food Facts.
   tsx src/cli.ts build                Volcado crudo → dataset.json + informe.
-  tsx src/cli.ts update [opciones]    Las dos cosas.
+  tsx src/cli.ts update [opciones]    Las tres cosas, en orden.
   tsx src/cli.ts probe-warehouse      Sondea qué códigos de almacén existen.
 
-Opciones de fetch/update:
+Opciones de fetch/enrich/update:
   --force              Ignora caché y volcado previo. Lo vuelve a pedir todo.
-  --limit N            Corta tras N fichas. Para probar sin esperar 80 minutos.
+  --limit N            Corta tras N fichas. Para probar sin esperar horas.
   --max-age-days N     Refresca lo cacheado con más de N días.
 
-Va a 1 petición/segundo, en serie. Un crawl completo son ~80 minutos la primera
-vez. Es reanudable: si lo cortas, al relanzarlo sigue donde estaba.
+Todo va en serie, una petición cada vez: 1 s con Mercadona y 2,5 s con Open
+Food Facts, que frena por debajo de eso. La primera vez son ~55 min el catálogo
+y ~2 h el cruce; las siguientes, segundos. Es reanudable: si lo cortas, al
+relanzarlo sigue donde estaba.
 `);
       if (command !== 'help') process.exitCode = 1;
       break;

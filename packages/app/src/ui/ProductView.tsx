@@ -92,6 +92,13 @@ function Nutrition({ product, manual }: { product: StoredProduct; manual: boolea
         <i />
         fuente: <strong>{fuente}</strong> · {describeFuente(fuente)}
       </p>
+      {nutrition?.notas && (
+        // Con qué ficha se emparejó. Si OFF casó un yogur natural con uno de
+        // fresa, aquí es donde se ve.
+        <p class="card__note" style={{ marginTop: '8px' }}>
+          {nutrition.notas}
+        </p>
+      )}
     </section>
   );
 }

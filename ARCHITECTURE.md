@@ -271,9 +271,77 @@ enterarse en mi máquina.
 
 ---
 
+## Open Food Facts: de dónde salen los macros
+
+Mercadona no publica valores nutricionales (arriba), así que los macros se
+cruzan por código de barras contra Open Food Facts, que es colaborativo y
+abierto. Es una segunda etapa del pipeline (`enrich`), con el mismo patrón que
+el crawl: una petición cada vez, caché en disco, reanudable. Las respuestas
+crudas van al mismo volcado fechado, en `off/<ean>.json`, con un marcador
+`<ean>.404` para los que OFF no conoce: que no esté también es un dato, y
+guardarlo evita volver a preguntar en cada ejecución.
+
+### Cobertura medida
+
+Sobre 150 EAN repartidos por todo el catálogo, con reintentos y sin dar por
+perdida ninguna petición:
+
+| | Existen en OFF | Con kcal + P + HC + G | Con los 8 nutrientes |
+|---|---|---|---|
+| Todo el catálogo | 80,0% | **67,3%** (±7,5) | 36,7% |
+| Hacendado | 90,5% | 82,1% | — |
+| Otras marcas | 61,8% | 41,8% | — |
+
+**Una medición anterior dio un 17,5% y era falsa.** Iba a 1 petición/segundo,
+OFF devolvió 429 en 139 de 200 y el sondeo las contó como "no encontrado". El
+número no cuadraba con lo esperable, se miraron los códigos de estado y se
+repitió bien. Queda aquí escrito porque es exactamente el tipo de error que se
+vuelve a cometer.
+
+### Ritmo
+
+OFF frena por debajo de 2,5 s entre peticiones (medido: 19 de 150 frenadas a
+ese ritmo, todas resueltas al primer reintento; a 1 s, el 70%). El cliente
+HTTP acepta un intervalo por llamada y respeta `Retry-After`. Los 2.705 EAN que
+se preguntan son unas tres horas la primera vez (medido: ~4 s por petición contando las esperas de los 429) y segundos las siguientes.
+
+### Qué no se pregunta
+
+- **La no-alimentación** del volcado crudo, que puede ser anterior a acotar
+  el scope. Una hora de peticiones para productos que no salen en el dataset.
+- **Los EAN que empiezan por 2**: rango que GS1 reserva para códigos internos
+  de tienda (peso variable, obrador, bandejas pesadas en caja). No identifican
+  un producto a nivel mundial y OFF no puede conocerlos. Son 265.
+- **Los EAN repetidos** (20 productos distintos comparten código) se piden una
+  vez y `build` reparte la ficha entre todos.
+
+### Qué se descarta aunque venga
+
+OFF tiene datos metidos a mano: kcal de cinco cifras, gramos negativos, macros
+que suman 300 g por cada 100. `normalize/nutrition.ts` descarta cualquier
+valor fuera de rango (kcal > 950; gramos fuera de 0-100;
+proteínas + hidratos + grasas > 105 g) y exige los cuatro principales para
+aceptar la ficha. Lo descartado se cuenta en el informe y sale en el log con
+el producto y el valor. Nunca llega a la ficha como si fuera verdad.
+
+La unidad (`per: 100g | 100ml`) se toma del contenido neto de Mercadona, que
+es dato nuestro: OFF usa el sufijo `_100g` también para líquidos. Cada valor
+aceptado lleva `fuente: openfoodfacts` y una nota con el nombre y el código de
+la ficha de OFF, para poder rastrearlo.
+
+### Lo que queda vacío
+
+Un tercio del catálogo no tendrá macros. Esos productos muestran su campo
+`fuente` en blanco y una explicación, sin inventar nada. Rellenarlos desde un
+alimento genérico (`fuente: generico`) o a mano (`fuente: manual`, en la base
+de usuario) son decisiones pendientes, tomadas a propósito cuando se vea cuáles
+faltan en la práctica.
+
+---
+
 ## Lo que no está hecho
 
-Cruce con Open Food Facts, estimación desde alimento genérico, recetas,
-favoritos y registro diario. El modelo de datos está preparado (`Nutrition` con
-su `fuente`, la base `recetas-user`), pero la funcionalidad es de sesiones
-posteriores.
+Recetas, lista de la compra, registro diario, estimación desde alimento
+genérico y corrección manual de macros. El modelo de datos está preparado
+(`Nutrition` con su `fuente`, la base `recetas-user`), pero la funcionalidad es
+de fases posteriores.

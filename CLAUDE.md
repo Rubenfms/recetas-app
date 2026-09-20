@@ -71,20 +71,42 @@ cuadra, comprueba antes de asumir.
   viene con espacios de padding; `total_units * pack_size` no cuadra con
   `unit_size` en ~9% de los packs.
 
+## Open Food Facts: de dónde salen los macros (verificado 2026-09-06)
+
+- **Cobertura medida sobre 150 EAN**: el 80% existe en OFF y el 67% trae los
+  cuatro macros (±7,5 puntos). Hacendado: 90% / 82%. Otras marcas: 62% / 42%.
+- **OFF frena de verdad.** A 1 petición/segundo devolvió 429 en el 70% de las
+  peticiones. A 2,5 s, en el 13%, y todas se resolvieron al primer reintento.
+  El cliente respeta `Retry-After`. No bajes de 2,5 s.
+- **Un 429 nunca es "no encontrado".** La primera medición contó los 429 como
+  productos ausentes y dio un 17,5% falso. Un 429 se reintenta; un 404 sí es
+  una respuesta.
+- **Los EAN que empiezan por 2 son códigos internos de tienda** (rango GS1
+  de distribución restringida: peso variable, obrador). OFF no los conoce y
+  no se preguntan. Son 265 en el catálogo.
+- **OFF es colaborativo y tiene basura.** Lo que se sale de rango (kcal > 950,
+  gramos fuera de 0-100, proteínas+hidratos+grasas > 105 g) se descarta y se
+  cuenta en el informe. Nunca llega a la ficha.
+- La unidad (`per: 100g | 100ml`) sale del contenido neto de Mercadona, no de
+  OFF, que no la distingue en el nombre del campo.
+- Lo que OFF no cubre se queda **vacío, con `fuente` en blanco**. Los
+  genéricos y la entrada manual son decisiones pendientes, no olvidos.
+
 ## Trabajo futuro (no lo hagas sin que te lo pidan)
 
-Cruce con Open Food Facts, estimación desde alimento genérico, recetas,
-favoritos y registro diario son sesiones posteriores. El modelo de datos ya
-está preparado para ellos (`packages/shared/src/dataset.ts` y las tablas de
-usuario en la PWA), pero la funcionalidad no está escrita.
+Recetas, lista de la compra y registro diario son fases posteriores.
+Estimación desde alimento genérico y corrección manual de macros también. El
+modelo de datos ya está preparado (`packages/shared/src/dataset.ts` y las
+tablas de usuario en la PWA), pero la funcionalidad no está escrita.
 
 ## Comandos
 
 ```bash
 npm install
-npm run pipeline:fetch     # crawl del catálogo (reanudable, cacheado)
+npm run pipeline:fetch     # crawl del catálogo (~55 min la primera vez; reanudable, cacheado)
+npm run pipeline:enrich    # cruce con Open Food Facts (~3 h la primera vez; igual)
 npm run pipeline:build     # volcado crudo → dataset.json + informe
-npm run pipeline:update    # fetch + build
+npm run pipeline:update    # fetch + enrich + build
 npm run app:dev
 npm run app:build
 ```

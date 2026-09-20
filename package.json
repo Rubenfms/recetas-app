@@ -10,6 +10,7 @@
   },
   "scripts": {
     "pipeline:fetch": "npm run fetch --workspace @recetas/pipeline --",
+    "pipeline:enrich": "npm run enrich --workspace @recetas/pipeline --",
     "pipeline:build": "npm run build --workspace @recetas/pipeline --",
     "pipeline:update": "npm run update --workspace @recetas/pipeline --",
     "pipeline:probe-warehouse": "npm run probe-warehouse --workspace @recetas/pipeline --",

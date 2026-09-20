@@ -14,6 +14,12 @@ export function ProductRow({
 }) {
   const reference = formatReferencePrice(product);
   const photo = product.photos[0]?.thumbnail;
+  // Ver las kcal sin abrir la ficha es lo que hace útil una lista de comida.
+  const kcal =
+    product.nutrition?.kcal != null
+      ? `${Math.round(product.nutrition.kcal)} kcal/${product.nutrition.per === '100ml' ? '100 ml' : '100 g'}`
+      : null;
+  const meta = [describePackaging(product) || '—', kcal].filter(Boolean).join(' · ');
 
   return (
     <li class="row">
@@ -25,7 +31,7 @@ export function ProductRow({
         )}
         <span class="row__body">
           <span class="row__name">{product.name}</span>
-          <span class="row__meta">{describePackaging(product) || '—'}</span>
+          <span class="row__meta">{meta}</span>
           {badge && <span class="badge">{badge}</span>}
         </span>
         <span class="row__price num">

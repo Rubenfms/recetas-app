@@ -11,12 +11,16 @@ import { log } from '../lib/log.js';
 export interface RawResponse {
   status: number;
   body: string;
+  /** Lo que pidió el servidor esperar, si lo dijo. */
+  retryAfterMs?: number;
 }
 
 export const httpStats = {
   networkRequests: 0,
   retries: 0,
   blocked: 0,
+  /** 429: el servidor nos ha frenado. Es normal con Open Food Facts. */
+  throttled: 0,
 };
 
 /**
@@ -61,23 +65,42 @@ function enqueue<T>(task: () => Promise<T>): Promise<T> {
   return result;
 }
 
-async function throttledFetch(url: string): Promise<RawResponse> {
-  const wait = REQUEST_INTERVAL_MS - (Date.now() - lastRequestStartedAt);
+export interface GetOptions {
+  /** Separación mínima entre peticiones. Cada servicio tiene su ritmo. */
+  intervalMs?: number;
+  userAgent?: string;
+  /** Las cookies solo tienen sentido con Mercadona, que va tras Akamai. */
+  sendCookies?: boolean;
+}
+
+async function throttledFetch(url: string, opts: Required<GetOptions>): Promise<RawResponse> {
+  const wait = opts.intervalMs - (Date.now() - lastRequestStartedAt);
   if (wait > 0) await sleep(wait);
   lastRequestStartedAt = Date.now();
   httpStats.networkRequests += 1;
 
-  const cookie = cookieHeader();
+  const cookie = opts.sendCookies ? cookieHeader() : undefined;
   const res = await fetch(url, {
     headers: {
-      'User-Agent': USER_AGENT,
+      'User-Agent': opts.userAgent,
       Accept: 'application/json, text/plain, */*',
       'Accept-Language': 'es-ES,es;q=0.9',
       ...(cookie ? { Cookie: cookie } : {}),
     },
   });
-  absorbCookies(res);
-  return { status: res.status, body: await res.text() };
+  if (opts.sendCookies) absorbCookies(res);
+  return { status: res.status, body: await res.text(), retryAfterMs: retryAfterOf(res) };
+}
+
+/** Si el servidor dice cuánto esperar, se le hace caso antes que al backoff. */
+function retryAfterOf(res: Response): number | undefined {
+  const header = res.headers.get('retry-after');
+  if (!header) return undefined;
+  const seconds = Number(header);
+  if (Number.isFinite(seconds) && seconds > 0) return Math.min(seconds, 120) * 1000;
+  const date = Date.parse(header);
+  if (Number.isFinite(date)) return Math.min(Math.max(0, date - Date.now()), 120_000);
+  return undefined;
 }
 
 /** ¿Merece la pena reintentar? Un 404 es una respuesta, no un fallo. */
@@ -95,20 +118,28 @@ function isBlocked(status: number): boolean {
  * Devuelve la respuesta aunque sea 404: decidir qué hacer con ella es del
  * llamante, no de aquí.
  */
-export async function httpGet(url: string): Promise<RawResponse> {
+export async function httpGet(url: string, options: GetOptions = {}): Promise<RawResponse> {
+  const opts: Required<GetOptions> = {
+    intervalMs: options.intervalMs ?? REQUEST_INTERVAL_MS,
+    userAgent: options.userAgent ?? USER_AGENT,
+    sendCookies: options.sendCookies ?? true,
+  };
   let lastError: unknown;
+  let serverAskedFor: number | undefined;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
     if (attempt > 0) {
       httpStats.retries += 1;
       const backoff =
+        serverAskedFor ??
         RETRY_BASE_DELAY_MS * 2 ** (attempt - 1) + Math.floor(Math.random() * 500);
       log.warn(`reintento ${attempt}/${MAX_RETRIES} en ${Math.round(backoff / 1000)}s · ${url}`);
       await sleep(backoff);
+      serverAskedFor = undefined;
     }
 
     try {
-      const res = await enqueue(() => throttledFetch(url));
+      const res = await enqueue(() => throttledFetch(url, opts));
 
       if (isBlocked(res.status)) {
         httpStats.blocked += 1;
@@ -121,6 +152,8 @@ export async function httpGet(url: string): Promise<RawResponse> {
       }
 
       if (isRetryable(res.status)) {
+        if (res.status === 429) httpStats.throttled += 1;
+        serverAskedFor = res.retryAfterMs;
         lastError = new Error(`HTTP ${res.status} en ${url}`);
         continue;
       }

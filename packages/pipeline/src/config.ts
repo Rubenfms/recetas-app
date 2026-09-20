@@ -65,3 +65,33 @@ export const MAX_INVALID_PRODUCT_RATIO = 0.01;
 
 export const USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+
+// ---------------------------------------------------------------------------
+// Open Food Facts: de donde salen los macros, porque Mercadona no los publica.
+// ---------------------------------------------------------------------------
+
+export const OFF_API_BASE = 'https://world.openfoodfacts.org/api/v2';
+
+/**
+ * OFF frena de verdad. Medido sobre 150 EAN: a 1 petición/segundo devolvió
+ * 429 en el 70% de los casos; a 2,5 segundos, en el 13%, y todas esas se
+ * resolvieron al primer reintento. Bajar de aquí no compensa.
+ */
+export const OFF_REQUEST_INTERVAL_MS = 2500;
+
+/** OFF pide que las aplicaciones se identifiquen y den un sitio de contacto. */
+export const OFF_USER_AGENT =
+  'recetas-app/0.1 (proyecto personal; https://github.com/Rubenfms/recetas-app)';
+
+/**
+ * Rangos plausibles por 100 g/ml. OFF es colaborativo y tiene datos metidos a
+ * mano: kcal de cinco cifras, gramos negativos, macros que suman 300 g. Lo que
+ * se salga de aquí se descarta y se cuenta en el informe, en vez de acabar en
+ * la ficha como si fuera verdad.
+ */
+export const NUTRITION_LIMITS = {
+  kcalMax: 950,
+  gramsMax: 100,
+  /** Proteínas + hidratos + grasas. Algo de holgura por redondeos. */
+  macroSumMax: 105,
+} as const;

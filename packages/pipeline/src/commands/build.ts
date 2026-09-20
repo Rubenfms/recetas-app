@@ -12,7 +12,33 @@ import { log } from '../lib/log.js';
 import { isFoodCategoryPath } from '../mercadona/food-categories.js';
 import { ProductDetailSchema } from '../mercadona/schemas.js';
 import { normalizeProduct } from '../normalize/product.js';
+import { nutritionFromOff } from '../normalize/nutrition.js';
+import { OffResponseSchema, type OffResponse } from '../openfoodfacts/schemas.js';
 import type { RawDumpMeta } from './fetch.js';
+
+/**
+ * Respuestas de Open Food Facts guardadas por `enrich`, indexadas por EAN.
+ * Si todavía no se ha ejecutado, el mapa está vacío y el dataset sale sin
+ * macros, que es exactamente lo que pasaba antes de la fase 2.
+ */
+function loadOffByEan(dumpDir: string): { byEan: Map<string, OffResponse>; invalid: number } {
+  const offDir = join(dumpDir, 'off');
+  const byEan = new Map<string, OffResponse>();
+  let invalid = 0;
+  if (!existsSync(offDir)) return { byEan, invalid };
+
+  for (const file of readdirSync(offDir).filter((f) => f.endsWith('.json'))) {
+    const ean = basename(file, '.json');
+    try {
+      const parsed = OffResponseSchema.safeParse(JSON.parse(readFileSync(join(offDir, file), 'utf8')));
+      if (parsed.success) byEan.set(ean, parsed.data);
+      else invalid += 1;
+    } catch {
+      invalid += 1;
+    }
+  }
+  return { byEan, invalid };
+}
 
 /** El volcado fechado más reciente. */
 export function latestRawDump(): string {
@@ -41,6 +67,12 @@ export interface BuildReport {
   withPhotos: number;
   /** Fichas del volcado que no son alimentación y quedan fuera del dataset. */
   skippedNonFood: number;
+  /** Productos cuyo EAN estaba en Open Food Facts. */
+  offMatched: number;
+  /** Estaban en OFF pero sin los cuatro nutrientes mínimos. */
+  offWithoutNutrients: number;
+  /** Estaban en OFF con valores fuera de rango, descartados a propósito. */
+  offImpossible: number;
   invalid: number;
   duplicateEans: number;
   outputPath: string;
@@ -76,9 +108,24 @@ export function runBuild(dumpDir = latestRawDump()): BuildReport {
     throw new Error(`No hay ninguna ficha en ${productsDir}.`);
   }
 
+  const { byEan: offByEan, invalid: offInvalid } = loadOffByEan(dumpDir);
+  if (offByEan.size > 0) {
+    log.info(`${offByEan.size} fichas de Open Food Facts disponibles para el cruce.`);
+  } else {
+    log.warn(
+      'No hay datos de Open Food Facts en el volcado. El dataset saldrá sin macros; ' +
+        'ejecuta `npm run pipeline:enrich` para cruzarlos.',
+    );
+  }
+  if (offInvalid > 0) log.warn(`${offInvalid} respuestas de OFF ilegibles, descartadas.`);
+
   const products: CatalogProduct[] = [];
   let invalid = 0;
   let skippedNonFood = 0;
+  let offMatched = 0;
+  let offWithoutNutrients = 0;
+  let offImpossible = 0;
+  const generatedAt = new Date().toISOString();
 
   for (const file of files) {
     const id = basename(file, '.json');
@@ -112,6 +159,23 @@ export function runBuild(dumpDir = latestRawDump()): BuildReport {
       skippedNonFood += 1;
       continue;
     }
+
+    // Los macros entran aquí, con su `fuente`. Un EAN repetido reparte la
+    // misma ficha de OFF entre los productos que lo comparten.
+    const off = product.ean ? offByEan.get(product.ean) : undefined;
+    if (off) {
+      offMatched += 1;
+      const outcome = nutritionFromOff(off, product.netContent, generatedAt);
+      if (outcome.nutrition) {
+        product.nutrition = outcome.nutrition;
+      } else if (outcome.reason === 'valores-imposibles') {
+        offImpossible += 1;
+        log.warn(`${product.id} ${product.name}: descartado de OFF · ${outcome.rejected}`);
+      } else {
+        offWithoutNutrients += 1;
+      }
+    }
+
     products.push(product);
   }
 
@@ -144,7 +208,7 @@ export function runBuild(dumpDir = latestRawDump()): BuildReport {
 
   const dataset: Dataset = {
     schemaVersion: DATASET_SCHEMA_VERSION,
-    generatedAt: new Date().toISOString(),
+    generatedAt,
     source: {
       provider: 'mercadona',
       apiBase: API_BASE,
@@ -188,6 +252,9 @@ export function runBuild(dumpDir = latestRawDump()): BuildReport {
     withNetContent,
     withPhotos,
     skippedNonFood,
+    offMatched,
+    offWithoutNutrients,
+    offImpossible,
     invalid,
     duplicateEans,
     outputPath: DATASET_PATH,
